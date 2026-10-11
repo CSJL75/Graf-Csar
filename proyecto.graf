@@ -1,0 +1,29 @@
+# Graficador - proyecto (.graf)
+# Cada linea = un registro con pares clave=valor.
+# En [funciones], la clave expr= va al final (toma el resto de la linea).
+
+[funciones]
+
+[puntos]
+x=25 y=40 visible=1 label=A
+x=24 y=39.3300018 visible=1 label=B
+x=23 y=38.6699982 visible=1 label=C
+x=22 y=38 visible=1 label=D
+x=21 y=37.3300018 visible=1 label=E
+x=20 y=36.6699982 visible=1 label=F
+x=19 y=35.9399986 visible=1 label=G
+x=18 y=36 visible=1 label=H
+x=17 y=35.3300018 visible=1 label=I
+x=16 y=34.6699982 visible=1 label=J
+x=15 y=34 visible=1 label=K
+
+[conexiones]
+
+[conicas]
+
+[ddas]
+
+[polys]
+
+[vista]
+ra=-10 rb=10 rn=2000 autoFit=1 viewMode=0 vx0=0 vx1=10000 vy0=0 vy1=10000 showGrid=1 showAxes=1 showLabels=1 showTicks=1 connectAll=1 darkCanvas=0 polyColor=1 polyStyle=0 polyWidth=1

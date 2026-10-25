@@ -3,6 +3,8 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdint>
+#include <map>
+#include <set>
 
 void Canvas::resize(int width, int height) {
     if (width == w && height == h) return;
@@ -166,6 +168,24 @@ std::vector<ElPt> conicBoundary(const MidResult& m, bool circle) {
     for (int i = 0; i < n; ++i) loop.push_back({-q[i].x, -q[i].y});
     for (int i = n - 1; i >= 0; --i) loop.push_back({-q[i].x, q[i].y});
     return loop;
+}
+
+std::vector<ElPt> midpointCirclePoints(int r) {
+    std::vector<ElPt> points;
+    if (r <= 0) return points;
+
+    MidResult m = midpointCircle(r);
+    std::map<int, std::set<int>> unique;
+    for (const ElPt& q : m.cuarto) {
+        const ElPt symmetric[] = {
+            { q.x,  q.y}, { q.y,  q.x}, {-q.x,  q.y}, {-q.y,  q.x},
+            { q.x, -q.y}, { q.y, -q.x}, {-q.x, -q.y}, {-q.y, -q.x}
+        };
+        for (const ElPt& p : symmetric) {
+            if (unique[p.y].insert(p.x).second) points.push_back(p);
+        }
+    }
+    return points;
 }
 
 // =============================================================
@@ -572,5 +592,55 @@ void Canvas::drawEllipse(int cx, int cy, int rx, int ry,
         for (int oy = -half; oy <= half; ++oy)
             for (int ox = -half; ox <= half; ++ox)
                 line(ax + ox, ay + oy, bx + ox, by + oy, r, g, b);
+    }
+}
+
+void Canvas::drawFilledCircleMidpoint(int cx, int cy, int radius, int fillMode,
+                                      uint8_t fillR, uint8_t fillG, uint8_t fillB,
+                                      uint8_t borderR, uint8_t borderG, uint8_t borderB,
+                                      int thickness) {
+    if (radius <= 0) {
+        setPixel(cx, cy, borderR, borderG, borderB);
+        return;
+    }
+
+    const std::vector<ElPt> boundary = midpointCirclePoints(radius);
+    if (fillMode == 1) {
+        // El centro permanece fijo. Se distribuyen como maximo 180 radios
+        // uniformemente y cada extremo se toma del contorno de punto medio.
+        const int radialLines = std::min(180, static_cast<int>(boundary.size()));
+        const double pi = 3.14159265358979323846;
+        const int innerGap = std::min(radius, std::max(2, thickness * 2 + 1));
+        for (int i = 0; i < radialLines; ++i) {
+            const double target = 2.0 * pi * i / radialLines;
+            const ElPt* endpoint = &boundary[0];
+            double bestDistance = 2.0 * pi;
+            for (const ElPt& p : boundary) {
+                double angle = std::atan2(static_cast<double>(p.y),
+                                          static_cast<double>(p.x));
+                if (angle < 0.0) angle += 2.0 * pi;
+                double distance = std::fabs(angle - target);
+                distance = std::min(distance, 2.0 * pi - distance);
+                if (distance < bestDistance) {
+                    bestDistance = distance;
+                    endpoint = &p;
+                }
+            }
+            const double length = std::hypot(static_cast<double>(endpoint->x),
+                                            static_cast<double>(endpoint->y));
+            const double ux = endpoint->x / length;
+            const double uy = endpoint->y / length;
+            line(cx + ux * innerGap, cy + uy * innerGap,
+                 cx + endpoint->x, cy + endpoint->y,
+                 fillR, fillG, fillB);
+        }
+    }
+
+    const int half = std::max(0, thickness / 2);
+    for (const ElPt& p : boundary) {
+        for (int oy = -half; oy <= half; ++oy)
+            for (int ox = -half; ox <= half; ++ox)
+                setPixel(cx + p.x + ox, cy + p.y + oy,
+                         borderR, borderG, borderB);
     }
 }

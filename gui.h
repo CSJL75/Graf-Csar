@@ -62,6 +62,17 @@ struct ConicRow {
     bool visible = true;
 };
 
+struct FilledCircleRow {
+    int xc = 100;
+    int yc = 100;
+    int r = 51;
+    int fillMode = 1;  // 0 = solo contorno, 1 = lineas desde el centro
+    int fillColor = 1;
+    int borderColor = 8;
+    int width = 2;
+    bool visible = true;
+};
+
 struct DdaLine {
     float xa = 0.0f;
     float ya = 0.0f;
@@ -103,6 +114,7 @@ struct GuiData {
     std::vector<SegRes> segs;
     std::vector<SegConnection> conns;
     std::vector<ConicRow> conics;
+    std::vector<FilledCircleRow> filledCircles;
     std::vector<DdaLine> ddas;
     std::vector<PolyFill> polys;
 

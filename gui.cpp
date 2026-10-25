@@ -222,6 +222,9 @@ void applyGeoGebraStyle() {
     c[ImGuiCol_TabDimmed]            = ImVec4(0.94f, 0.95f, 0.97f, 1.00f);
     c[ImGuiCol_TabDimmedSelected]    = ImVec4(0.86f, 0.90f, 0.96f, 1.00f);
 
+    // Encabezados de tablas: contraste con el texto de las columnas.
+    c[ImGuiCol_TableHeaderBg]         = ImVec4(0.58f, 0.72f, 0.90f, 1.00f);
+
     // Botones
     c[ImGuiCol_Button]               = ImVec4(0.30f, 0.52f, 0.90f, 1.00f);
     c[ImGuiCol_ButtonHovered]        = ImVec4(0.35f, 0.57f, 0.95f, 1.00f);
@@ -1336,6 +1339,142 @@ void sendConicToArray(const ConicRow& c) {
     ImGui::EndChild();
 }
 
+void filledCirclesTab() {
+    float availH = ImGui::GetContentRegionAvail().y;
+    if (availH < 10.0f) return;
+    if (!ImGui::BeginChild("##sfilledcircles", ImVec2(0.0f, availH),
+                           ImGuiChildFlags_None)) {
+        ImGui::EndChild();
+        return;
+    }
+
+    float fullW = ImGui::GetContentRegionAvail().x;
+    if (fullW < 1.0f) fullW = 380.0f;
+    static int xc = 100, yc = 100, radius = 51;
+    static int fillMode = 1;
+    static int fillColor = 1, borderColor = 8, width = 2;
+
+    ImGui::TextUnformatted("FASE: CIRCULO CON AREA RELLENA");
+    ImGui::TextWrapped("Punto medio para el contorno y lineas desde el centro "
+                       "hacia los puntos de los ocho octantes.");
+    ImGui::Spacing();
+    ImGui::SetNextItemWidth(fullW * 0.28f);
+    ImGui::DragInt("Xc", &xc, 1.0f);
+    ImGui::SameLine();
+    ImGui::SetNextItemWidth(fullW * 0.28f);
+    ImGui::DragInt("Yc", &yc, 1.0f);
+    ImGui::SameLine();
+    ImGui::SetNextItemWidth(fullW * 0.28f);
+    ImGui::DragInt("R", &radius, 1.0f, 1, 100000);
+    ImGui::SetNextItemWidth(fullW * 0.48f);
+    ImGui::Combo("Modo", &fillMode, "Solo contorno\0Lineas desde el centro\0");
+    ImGui::TextUnformatted("Relleno");
+    ImGui::SameLine();
+    colorPicker(300, &fillColor);
+    ImGui::SameLine();
+    ImGui::TextUnformatted("Borde");
+    ImGui::SameLine();
+    colorPicker(301, &borderColor);
+    ImGui::SameLine();
+    ImGui::SetNextItemWidth(fullW * 0.28f);
+    ImGui::SliderInt("grosor", &width, 1, 4);
+
+    if (primaryButton("Agregar circulo relleno", ImVec2(-1.0f, 0.0f))) {
+        FilledCircleRow c;
+        c.xc = xc;
+        c.yc = yc;
+        c.r = radius;
+        c.fillMode = fillMode;
+        c.fillColor = fillColor;
+        c.borderColor = borderColor;
+        c.width = width;
+        g_gui.filledCircles.push_back(c);
+        g_gui.wantFitAll = true;
+    }
+
+    ImGui::Spacing();
+    ImGui::Separator();
+    ImGui::Text("CIRCULOS (%d)", static_cast<int>(g_gui.filledCircles.size()));
+    ImGui::SameLine();
+    if (!g_gui.filledCircles.empty() &&
+        ImGui::SmallButton("Limpiar circulos")) {
+        g_gui.filledCircles.clear();
+        g_gui.wantFitAll = true;
+    }
+    for (int i = 0; i < static_cast<int>(g_gui.filledCircles.size()); ++i) {
+        FilledCircleRow& c = g_gui.filledCircles[i];
+        ImGui::PushID(3000 + i);
+        char circleTitle[32];
+        std::snprintf(circleTitle, sizeof(circleTitle), "Circulo %d", i + 1);
+        ImGui::SeparatorText(circleTitle);
+        colorPicker(0, &c.fillColor);
+        ImGui::SameLine();
+        ImGui::TextUnformatted("relleno");
+        ImGui::SameLine();
+        colorPicker(1, &c.borderColor);
+        ImGui::SameLine();
+        ImGui::TextUnformatted("borde");
+        ImGui::SameLine();
+        ImGui::Checkbox("ver", &c.visible);
+        ImGui::SameLine();
+        ImGui::SetNextItemWidth(fullW * 0.45f);
+        ImGui::Combo("Modo", &c.fillMode, "Solo contorno\0Lineas desde el centro\0");
+        ImGui::SameLine();
+        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.88f, 0.70f, 0.70f, 1.0f));
+        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.45f, 0.08f, 0.08f, 1.0f));
+        char removeLabel[32];
+        std::snprintf(removeLabel, sizeof(removeLabel), "Eliminar##circle%d", i);
+        if (ImGui::SmallButton(removeLabel)) {
+            g_gui.filledCircles.erase(g_gui.filledCircles.begin() + i);
+            ImGui::PopStyleColor(2);
+            ImGui::PopID();
+            --i;
+            continue;
+        }
+        ImGui::PopStyleColor(2);
+        ImGui::SetNextItemWidth(fullW * 0.28f);
+        ImGui::DragInt("Xc", &c.xc, 1.0f);
+        ImGui::SameLine();
+        ImGui::SetNextItemWidth(fullW * 0.28f);
+        ImGui::DragInt("Yc", &c.yc, 1.0f);
+        ImGui::SameLine();
+        ImGui::SetNextItemWidth(fullW * 0.28f);
+        ImGui::DragInt("R", &c.r, 1.0f, 1, 100000);
+        ImGui::SetNextItemWidth(fullW * 0.28f);
+        ImGui::SliderInt("grosor", &c.width, 1, 4);
+
+        if (ImGui::CollapsingHeader("Tabla del algoritmo (Pk, Xk, Yk)")) {
+            MidResult m = midpointCircle(std::max(1, c.r));
+            if (ImGui::BeginTable("##circle_steps", 5,
+                                  ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg |
+                                      ImGuiTableFlags_SizingStretchProp)) {
+                ImGui::TableSetupColumn("K");
+                ImGui::TableSetupColumn("Pk");
+                ImGui::TableSetupColumn("Xk");
+                ImGui::TableSetupColumn("Yk");
+                ImGui::TableSetupColumn("Decision");
+                ImGui::TableHeadersRow();
+                for (const MidStep& s : m.pasos) {
+                    ImGui::TableNextRow();
+                    ImGui::TableSetColumnIndex(0); ImGui::Text("%d", s.k);
+                    ImGui::TableSetColumnIndex(1); ImGui::Text("%ld", s.p);
+                    ImGui::TableSetColumnIndex(2); ImGui::Text("%d", s.x);
+                    ImGui::TableSetColumnIndex(3); ImGui::Text("%d", s.y);
+                    ImGui::TableSetColumnIndex(4);
+                    ImGui::TextUnformatted(s.p < 0 ? "X+1" : "X+1,Y-1");
+                }
+                ImGui::EndTable();
+            }
+            ImGui::TextWrapped("P0 = 1 - R = %d. Cada fila se refleja en "
+                               "los ocho octantes y se usa para calcular "
+                               "los extremos de las scanlines.",
+                               1 - c.r);
+        }
+        ImGui::PopID();
+    }
+    ImGui::EndChild();
+}
+
 void polygonsTab() {
     float availH = ImGui::GetContentRegionAvail().y;
     if (availH < 10.0f) return;
@@ -1716,6 +1855,10 @@ void guiBuild() {
 
         if (ImGui::BeginTabItem("  Poligonos  ")) {
             polygonsTab();
+            ImGui::EndTabItem();
+        }
+        if (ImGui::BeginTabItem("  Circulos rellenos  ")) {
+            filledCirclesTab();
             ImGui::EndTabItem();
         }
 

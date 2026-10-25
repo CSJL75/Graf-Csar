@@ -328,11 +328,13 @@ std::string jstr(const JVal& o, const char* k, const std::string& def) {
 // =========================================================
 void applyLoaded(std::vector<FunctionRow>& funcs, std::vector<PointRow>& pts,
                  std::vector<SegConnection>& conns, std::vector<ConicRow>& conics,
+                 std::vector<FilledCircleRow>& filledCircles,
                  std::vector<DdaLine>& ddas, std::vector<PolyFill>& polys) {
     g_gui.funcs.swap(funcs);
     g_gui.pts.swap(pts);
     g_gui.conns.swap(conns);
     g_gui.conics.swap(conics);
+    if (!filledCircles.empty()) g_gui.filledCircles.swap(filledCircles);
     g_gui.ddas.swap(ddas);
     g_gui.polys.swap(polys);
     g_gui.segs.clear();
@@ -400,6 +402,15 @@ bool saveGraf(const std::string& path, std::string& err) {
           << " visible=" << (c.visible ? 1 : 0) << "\n";
     }
 
+    f << "\n[circulos_rellenos]\n";
+    for (std::size_t i = 0; i < g_gui.filledCircles.size(); ++i) {
+        const FilledCircleRow& c = g_gui.filledCircles[i];
+        f << "xc=" << c.xc << " yc=" << c.yc << " r=" << c.r
+          << " fillMode=" << c.fillMode
+          << " fillColor=" << c.fillColor << " borderColor=" << c.borderColor
+          << " width=" << c.width << " visible=" << (c.visible ? 1 : 0) << "\n";
+    }
+
     f << "\n[ddas]\n";
     for (std::size_t i = 0; i < g_gui.ddas.size(); ++i) {
         const DdaLine& d = g_gui.ddas[i];
@@ -454,6 +465,7 @@ bool loadGraf(const std::string& path, std::string& err) {
     std::vector<PointRow> pts;
     std::vector<SegConnection> conns;
     std::vector<ConicRow> conics;
+    std::vector<FilledCircleRow> filledCircles;
     std::vector<DdaLine> ddas;
     std::vector<PolyFill> polys;
 
@@ -535,6 +547,18 @@ bool loadGraf(const std::string& path, std::string& err) {
             c.fillMode = kvInt(m, "fill", 0);
             c.visible = kvInt(m, "visible", 1) != 0;
             conics.push_back(c);
+        } else if (section == "circulos_rellenos") {
+            parsePairs(t, m);
+            FilledCircleRow c;
+            c.xc = kvInt(m, "xc", 100);
+            c.yc = kvInt(m, "yc", 100);
+            c.r = kvInt(m, "r", 51);
+            c.fillMode = kvInt(m, "fillMode", 1);
+            c.fillColor = kvInt(m, "fillColor", 1);
+            c.borderColor = kvInt(m, "borderColor", 8);
+            c.width = kvInt(m, "width", 2);
+            c.visible = kvInt(m, "visible", 1) != 0;
+            filledCircles.push_back(c);
         } else if (section == "ddas") {
             parsePairs(t, m);
             DdaLine d;
@@ -588,7 +612,7 @@ bool loadGraf(const std::string& path, std::string& err) {
         }
     }
 
-    applyLoaded(funcs, pts, conns, conics, ddas, polys);
+    applyLoaded(funcs, pts, conns, conics, filledCircles, ddas, polys);
     return true;
 }
 
@@ -655,9 +679,10 @@ bool loadCsv(const std::string& path, std::string& err) {
     std::vector<FunctionRow> funcs;
     std::vector<SegConnection> conns;
     std::vector<ConicRow> conics;
+    std::vector<FilledCircleRow> filledCircles;
     std::vector<DdaLine> ddas;
     std::vector<PolyFill> polys;
-    applyLoaded(funcs, pts, conns, conics, ddas, polys);
+    applyLoaded(funcs, pts, conns, conics, filledCircles, ddas, polys);
     return true;
 }
 
@@ -721,6 +746,19 @@ bool saveJson(const std::string& path, std::string& err) {
           << ", \"visible\": " << (c.visible ? "true" : "false") << "}";
     }
     if (!g_gui.conics.empty()) f << "\n  ";
+    f << "],\n";
+
+    f << "  \"circulosRellenos\": [";
+    for (std::size_t i = 0; i < g_gui.filledCircles.size(); ++i) {
+        const FilledCircleRow& c = g_gui.filledCircles[i];
+        if (i) f << ",";
+        f << "\n    {\"xc\": " << c.xc << ", \"yc\": " << c.yc
+          << ", \"r\": " << c.r << ", \"fillMode\": " << c.fillMode
+          << ", \"fillColor\": " << c.fillColor
+          << ", \"borderColor\": " << c.borderColor << ", \"width\": " << c.width
+          << ", \"visible\": " << (c.visible ? "true" : "false") << "}";
+    }
+    if (!g_gui.filledCircles.empty()) f << "\n  ";
     f << "],\n";
 
     f << "  \"ddas\": [";
@@ -795,6 +833,7 @@ bool loadJson(const std::string& path, std::string& err) {
     std::vector<PointRow> pts;
     std::vector<SegConnection> conns;
     std::vector<ConicRow> conics;
+    std::vector<FilledCircleRow> filledCircles;
     std::vector<DdaLine> ddas;
     std::vector<PolyFill> polys;
 
@@ -866,6 +905,21 @@ bool loadJson(const std::string& path, std::string& err) {
         }
     }
 
+    if ((a = root.get("circulosRellenos")) && a->t == JVal::ARR) {
+        for (const JVal& e : a->arr) {
+            FilledCircleRow c;
+            c.xc = jint(e, "xc", 100);
+            c.yc = jint(e, "yc", 100);
+            c.r = jint(e, "r", 51);
+            c.fillMode = jint(e, "fillMode", 1);
+            c.fillColor = jint(e, "fillColor", 1);
+            c.borderColor = jint(e, "borderColor", 8);
+            c.width = jint(e, "width", 2);
+            c.visible = jbool(e, "visible", true);
+            filledCircles.push_back(c);
+        }
+    }
+
     if ((a = root.get("ddas")) && a->t == JVal::ARR) {
         for (const JVal& e : a->arr) {
             DdaLine d;
@@ -927,7 +981,7 @@ bool loadJson(const std::string& path, std::string& err) {
         g_gui.polyWidth = jint(*a, "polyWidth", g_gui.polyWidth);
     }
 
-    applyLoaded(funcs, pts, conns, conics, ddas, polys);
+    applyLoaded(funcs, pts, conns, conics, filledCircles, ddas, polys);
     return true;
 }
 

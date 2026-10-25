@@ -27,6 +27,7 @@ struct MidResult {
 MidResult midpointEllipse(int rx, int ry);
 MidResult midpointCircle(int r);
 std::vector<ElPt> conicBoundary(const MidResult& m, bool circle);
+std::vector<ElPt> midpointCirclePoints(int r);
 
 // Curvas uniformes abiertas (punto medio)
 // Parabola canonica x^2 = 4*p*y (abre hacia arriba), primer cuadrante.
@@ -74,7 +75,11 @@ struct Canvas {
                      uint8_t r, uint8_t g, uint8_t b);
     void drawEllipse(int cx, int cy, int rx, int ry,
                      uint8_t r, uint8_t g, uint8_t b, int thickness = 2);
+    void drawFilledCircleMidpoint(int cx, int cy, int radius,
+                                  int fillMode,
+                                  uint8_t fillR, uint8_t fillG, uint8_t fillB,
+                                  uint8_t borderR, uint8_t borderG, uint8_t borderB,
+                                  int thickness = 1);
     void fillTriangle(double ax, double ay, double bx, double by, double cx, double cy,
                       uint8_t r, uint8_t g, uint8_t b);
 };
-

@@ -270,6 +270,14 @@ void doFitAll() {
                 ymax = std::max(ymax, wy);
             }
         }
+        for (const FilledCircleRow& c : g_gui.filledCircles) {
+            if (!c.visible || c.r <= 0) continue;
+            any = true;
+            xmin = std::min(xmin, static_cast<double>(c.xc - c.r));
+            xmax = std::max(xmax, static_cast<double>(c.xc + c.r));
+            ymin = std::min(ymin, static_cast<double>(c.yc - c.r));
+            ymax = std::max(ymax, static_cast<double>(c.yc + c.r));
+        }
     }
     for (const DdaLine& d : g_gui.ddas) {
         if (!d.visible) continue;
@@ -557,6 +565,19 @@ void drawConic(const ConicRow& c) {
     }
 }
 
+void drawFilledCircle(const FilledCircleRow& c) {
+    if (!c.visible || c.r <= 0) return;
+    const unsigned char* fill = guiPalette(c.fillColor);
+    const unsigned char* border = guiPalette(c.borderColor);
+    double cxp = pxOfX(c.xc);
+    double cyp = pyOfY(c.yc);
+    int radius = std::max(1, static_cast<int>(std::lround(c.r * g_app.s)));
+    g_app.canvas.drawFilledCircleMidpoint(
+        static_cast<int>(std::lround(cxp)), static_cast<int>(std::lround(cyp)),
+        radius, c.fillMode, fill[0], fill[1], fill[2],
+        border[0], border[1], border[2], c.width);
+}
+
 void drawDda(const DdaLine& d) {
     if (!d.visible) return;
     const unsigned char* col = guiPalette(d.color);
@@ -677,6 +698,9 @@ void renderScene() {
 
     for (const ConicRow& c : g_gui.conics) {
         drawConic(c);
+    }
+    for (const FilledCircleRow& c : g_gui.filledCircles) {
+        drawFilledCircle(c);
     }
 
     for (const DdaLine& d : g_gui.ddas) {
@@ -827,6 +851,26 @@ void drawPlaneTextOverlay() {
         dl->AddText(font, 13.0f, ImVec2(pos.x + 2.0f, pos.y), col, txt);
         ly += ts.y + 6.0f;
         if (ly > io.DisplaySize.y * 0.6f) break;
+    }
+    for (std::size_t i = 0; i < g_gui.filledCircles.size(); ++i) {
+        const FilledCircleRow& c = g_gui.filledCircles[i];
+        if (!c.visible) continue;
+        const unsigned char* fill = guiPalette(c.fillColor);
+        ImU32 col = IM_COL32(fill[0], fill[1], fill[2], 255);
+        char txt[128];
+        std::snprintf(txt, sizeof(txt), "Circulo relleno %zu: centro (%d,%d), R=%d",
+                      i + 1, c.xc, c.yc, c.r);
+        ImVec2 pos(8.0f, ly);
+        ImVec2 ts = font->CalcTextSizeA(13.0f, FLT_MAX, 0.0f, txt);
+        dl->AddRectFilled(ImVec2(pos.x - 4.0f, pos.y - 3.0f),
+                          ImVec2(pos.x + ts.x + 8.0f, pos.y + ts.y + 3.0f),
+                          IM_COL32(255, 255, 255, 220), 4.0f);
+        dl->AddRectFilled(ImVec2(pos.x - 4.0f, pos.y - 3.0f),
+                          ImVec2(pos.x - 1.0f, pos.y + ts.y + 3.0f),
+                          col, 4.0f, ImDrawFlags_RoundCornersLeft);
+        dl->AddText(font, 13.0f, ImVec2(pos.x + 2.0f, pos.y), col, txt);
+        ly += ts.y + 6.0f;
+        if (ly > io.DisplaySize.y * 0.8f) break;
     }
 }
 
